@@ -1,0 +1,5 @@
+menuconfig DRIVERS_POWER_MONITOR_VS_BAT
+	bool "vs_bat"
+	default n
+	---help---
+		Enable support for vs_bat
