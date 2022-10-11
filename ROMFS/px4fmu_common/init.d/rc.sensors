@@ -198,3 +198,8 @@ then
 	# start last (wait for possible icm20948 passthrough mode)
 	ak09916 -X -q start
 fi
+#Astrox BMS code, start bms driver on I2C2 port
+if param greater -s PAV_BAT_CRITICAL -1
+then
+	vs_bat -X -b 2 -k start
+fi
