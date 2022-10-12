@@ -97,8 +97,11 @@ typedef union {
     uint8_t _uvp:1;     // pack under volrage
     uint8_t _otp:1;     // pack over temperature
     uint8_t _utp:1;     // pack under temperature
-    uint8_t _c_ocp:1;   // pack over current.
-    uint8_t _dc_ocp:1;  //
+
+	/* overcurrent protection ? */
+    uint8_t _c_ocp:1;   // connect pack over current => connect overcurrent protection ?
+    uint8_t _dc_ocp:1;  // disconnect pack over current => disconnect overcurrent protection ?
+
     uint8_t _low_soc:1; // low SOC
     uint8_t _contactor:1;
     uint8_t _slave_commu:1;
@@ -109,11 +112,17 @@ typedef union {
 typedef union {
   struct {
     uint8_t _slave_contactor:1; // slave contactor
+
     uint8_t _int_otp:1;         // ??
+
     uint8_t _ic_otp:1;          // ic over temperature
     uint8_t _swtich_otp:1;      // Switch over temperature
+
+    /* NTC :  Negative Temperature Coefficient Thermistor */
     uint8_t _ntc_discon:1;      // NTC disconnected
+
     uint8_t reserve:2;         // not use
+
     uint8_t _aux_otp:1;          // over temperature at BMS output line
   }bit;
   uint8_t buf;
