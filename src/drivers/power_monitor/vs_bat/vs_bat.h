@@ -244,9 +244,11 @@ private:
 
 	/*ASTROX BMS code
 		1. Vspace 에서 제공된 i2c 데이터 정보를 기반으로 하는 uORB 메세지는 Battery_status이다.
-		   배터리를 사용하는 모든 드라이버를 고유의 인덱스를 갖는데, 이 드라이버의 인덱스를 3번(4-1로 계산) 표현하기 위함이다.
+		   배터리를 사용하는 모든 드라이버를 고유의 인덱스를 갖는데, 
+		   이 드라이버의 인덱스를 3번(4-1로 계산) 표현하기 위함이다.
 		2. BAT_CAN 은 BMS에서 제공되는 에러 및 경고 메세지를 처리하기 위한 구조체이다.
-		3. _low_warn, _low_critical 은 파라메터에서 관리가 가능하도록 만들어진 변수이며, 각각 1차 경고, 2차 critical 레벨을 지정하기 위한 파라메터이다.
+		3. _low_warn, _low_critical 은 파라메터에서 관리가 가능하도록 만들어진 변수이며, 
+		각각 1차 경고, 2차 critical 레벨을 지정하기 위한 파라메터이다.
 	*/
 		// for battery failsafe mode.
 		uint16_t 	  _low_warn{0};

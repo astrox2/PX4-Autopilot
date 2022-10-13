@@ -107,6 +107,7 @@ protected:
 	virtual bool	external() const override { return px4_i2c_device_external(_device_id.devid); }
 
 private:
+	/* file Directory */
 	int			_fd{-1};
 
 };

@@ -85,6 +85,8 @@ I2C::init()
 	// Open the actual I2C device
 	char dev_path[16] {};
 	snprintf(dev_path, sizeof(dev_path), "/dev/i2c-%i", get_device_bus());
+
+	/* O_RDWR : FIle Oepm / Write */
 	_fd = ::open(dev_path, O_RDWR);
 
 	if (_fd < 0) {

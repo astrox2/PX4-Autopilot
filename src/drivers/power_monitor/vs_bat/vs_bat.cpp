@@ -50,14 +50,16 @@ VS_BAT::VS_BAT(const I2CSPIDriverConfig &config, int battery_index) :
 		/*PAV_BAT_WARN 이라는 파라메터를 이 드라이버에서 사용하기 위해 _low_warn 변수에다가 저장하여 사용.*/
 		param_t ph = param_find("PAV_BAT_WARN");
 		int32_t value = param_get(ph,&value);
-		if(ph != PARAM_INVALID && param_get(ph,&value) == PX4_OK) {
+		if(ph != PARAM_INVALID && param_get(ph,&value) == PX4_OK)
+		{
 			_low_warn = (uint16_t)value;
 			PX4_INFO("PAV warn volt :%d",_low_warn);
 		}
 
 		ph = param_find("PAV_BAT_CRITICAL");
 		value = param_get(ph,&value);
-		if(ph != PARAM_INVALID && param_get(ph,&value) == PX4_OK) {
+		if(ph != PARAM_INVALID && param_get(ph,&value) == PX4_OK)
+		{
 			_low_critical = (uint16_t)value;
 			PX4_INFO("PAV critical volt :%d",_low_critical);
 		}
@@ -86,6 +88,7 @@ int VS_BAT::read(uint8_t address, int16_t &data)
 	const int ret = transfer(&address, 1, (uint8_t *)&received_bytes, sizeof(received_bytes));
 
 	if (ret == PX4_OK) {
+		/* little-endian data to big-endian data */
 		data = swap16(received_bytes);
 
 	} else {
@@ -220,7 +223,8 @@ int VS_BAT::collect()
 		mavlink 메세지는 128가 넘지 않아야 하므로 아래의 모든 메세지는 128바이트가 넘지 않도록 계산하였다.
 	*/
 	cnt ++;
-	if (cnt > VS_BAT_STREAM_TIME) {
+	if (cnt > VS_BAT_STREAM_TIME /* 10 * 150 */) {
+		/* w_module , w_pack, w_slave : warn_XXX */
 		if(_can_packet.w_module.buf > 0 || _can_packet.w_pack.buf > 0 || _can_packet.w_slave.buf > 0 ) {
 			_mavlink_log_s.timestamp = hrt_absolute_time(); /*mavlink 메세지를 보내기 위해선 항상 TimeStamp가 추가가 되어야 함으로 이를 얻어옴*/
 			_battery_status = battery_status_s::BATTERY_WARNING_NONE;
@@ -246,7 +250,7 @@ int VS_BAT::collect()
 			PX4_WARN("%s ",_mavlink_log_s.text);
 			_mavlink_log_pub.publish(_mavlink_log_s);
 		}
-
+		/* f_act1, f_act2, f_etc : fault 1, 2, etc */
 		if(_can_packet.f_act1.buf > 0 || _can_packet.f_act2.buf > 0 || _can_packet.f_etc.buf > 0)	{
 
 			_mavlink_log_s.timestamp = hrt_absolute_time();
@@ -277,8 +281,10 @@ int VS_BAT::collect()
 	}
 
 	/* 위에서 얻은 경고 및 에러 상태에 따라 배터리의 모드를 변경함. 현재 이 코드에서는 동작하지 않도록 설정함.*/
-	if(_can_packet.f_act1.buf  == 0 && _can_packet.f_act2.buf  == 0 && _can_packet.f_etc.buf  == 0 &&
-	   _can_packet.w_module.buf == 0 && _can_packet.w_pack.buf == 0 && _can_packet.w_slave.buf == 0 && _bus_voltage >_low_warn) {
+	if(_can_packet.f_act1.buf  == 0 && _can_packet.f_act2.buf  == 0 &&
+	_can_packet.f_etc.buf  == 0 && _can_packet.w_module.buf == 0 &&
+	_can_packet.w_pack.buf == 0 && _can_packet.w_slave.buf == 0 && _bus_voltage >_low_warn)
+	{
 		_battery_status = battery_status_s::BATTERY_WARNING_NONE;
 	}
 
@@ -286,8 +292,14 @@ int VS_BAT::collect()
 		BATTERY_WARNING_LOW 	 : 배터리의 전압이 낮다는 경고메세지를 보내기 위해 배터리의 상태를 LOW 상태로 변경
 		BATTERY_WARNING_CRITICAL : 전압이 지정한 파라메터보다 낮을 경우에 비행모드를 return to home 모드로 변경하게끔 배터리의 상태를 Critical로 변경.
 	*/
-	if(_bus_voltage <= _low_warn && _bus_voltage > _low_critical) {_battery_status = battery_status_s::BATTERY_WARNING_LOW;}
-	else if (_bus_voltage < _low_critical) {_battery_status = battery_status_s::BATTERY_WARNING_CRITICAL;}
+	if(_bus_voltage <= _low_warn && _bus_voltage > _low_critical)
+	{
+		_battery_status = battery_status_s::BATTERY_WARNING_LOW;
+	}
+	else if (_bus_voltage < _low_critical)
+	{
+		_battery_status = battery_status_s::BATTERY_WARNING_CRITICAL;
+	}
 
 
 
