@@ -111,6 +111,24 @@ void Battery::updateCurrent(const float current_a)
 	_current_filter_a.update(current_a);
 }
 
+/*ASTROX BMS code, for update battery status data from bms bridge board*/
+void Battery::updateSOC(const float soc, const float temp, const uint8_t warning, bool connected)
+{
+	/* SOC 는 반드시 소수점으로 표현해야만 한다. 또한 스캐일링을 해야만 한다. 기본적으로 10을 나눈 값으로 동작된다.
+		아래 3개의 데이터는 다른 드라이버에서도 사용되는 변수이다.
+
+		이는 모두 SOC를 기반으로 계산되어 업데이트가 되도록 구성된다.
+		vs_bat 드라이버에서는 이미 계산된 데이터가 전달되므로, 아래처럼
+		변수로부터 바로 업데이트 되게끔하여 계산 부분을 스킵하도록하였다.
+	*/
+	_state_of_charge = soc;
+	_warning = warning;
+	_connected = connected;
+	/*온도 데이터는 다른 드라이버에서는 기본적으로 사용하지 않으므로 추가하였음.*/
+	_temperature = temp;
+}
+
+/*배터리 데이터를 업데이트 하는 함수이다.*/
 void Battery::updateBatteryStatus(const hrt_abstime &timestamp)
 {
 	if (!_battery_initialized) {
@@ -120,10 +138,15 @@ void Battery::updateBatteryStatus(const hrt_abstime &timestamp)
 
 	sumDischarged(timestamp, _current_a);
 	estimateStateOfCharge(_voltage_filter_v.getState(), _current_filter_a.getState());
-	computeScale();
+	/*vs_bat 드라이버의 index 가 4 이므로, 4일 경우에는 이부분을 스킵하도록 설정*/
+	if(_index != 4)
+	{
+		computeScale();
 
-	if (_connected && _battery_initialized) {
-		_warning = determineWarning(_state_of_charge);
+		if (_connected && _battery_initialized)
+		{
+			_warning = determineWarning(_state_of_charge);
+		}
 	}
 
 	if (_voltage_filter_v.getState() > 2.1f) {
@@ -138,6 +161,26 @@ battery_status_s Battery::getBatteryStatus()
 {
 	battery_status_s battery_status{};
 	battery_status.voltage_v = _voltage_v;
+	/* vs-bat 드라이버에서 제공되는 전압 데이터를 2개의 셀 데이터로 넘기기 위한 작업이다.
+	   PX4에서 기본적으로 제공하는 셀의 최대 갯수가 16개 이므로, 24셀의 데이터를 표현하는것은 기본적으로 불가능하다.
+	   cell_count 변수를 통해 배터리 셀의 갯수를 표현하고, 이 cell_count 를 기반으로 배터리 계산이 이루어 진다.
+
+		ex) 배터리 전압 계산방법 ..
+	   	for( int i = 0 ; i< cell_count; i++ )
+		 {
+			배터리 전압 += voltage_cell_v[i];
+		 }
+
+	vs_bat 드라이버에서는 셀 갯수를 2개로 지정하고, 2개의 셀 데이터에 배터리 전압을 2로 나눈 데이터를 집어 넣도록 구성하였다.
+	배터리의 전압 계산은 voltage_cell_v[] 배열 데이터의 합으로 구성되기 때문에 이러한 구조를 취했다.
+	cell_count = BAT4_N_CELLS = 2;  BAT4_N_CELLS 파라메터는
+	drivers/power_monitor/vs_bat/vs_bat_param.c 파일에서 확인이 가능하다.
+	*/
+	if(_index == 4 ) {
+		battery_status.voltage_cell_v[0] = _voltage_v/2;
+		battery_status.voltage_cell_v[1] = _voltage_v - battery_status.voltage_cell_v[0];
+	}
+
 	battery_status.voltage_filtered_v = _voltage_filter_v.getState();
 	battery_status.current_a = _current_a;
 	battery_status.current_filtered_a = _current_filter_a.getState();
@@ -146,7 +189,7 @@ battery_status_s Battery::getBatteryStatus()
 	battery_status.remaining = _state_of_charge;
 	battery_status.scale = _scale;
 	battery_status.time_remaining_s = computeRemainingTime(_current_a);
-	battery_status.temperature = NAN;
+	battery_status.temperature = _temperature;
 	battery_status.cell_count = _params.n_cells;
 	battery_status.connected = _connected;
 	battery_status.source = _source;
@@ -195,10 +238,14 @@ void Battery::sumDischarged(const hrt_abstime &timestamp, float current_a)
 void Battery::estimateStateOfCharge(const float voltage_v, const float current_a)
 {
 	// remaining battery capacity based on voltage
-	float cell_voltage = voltage_v / _params.n_cells;
+	float cell_voltage= {0.0f};
+
+	cell_voltage = voltage_v / _params.n_cells;
+
 
 	// correct battery voltage locally for load drop to avoid estimation fluctuations
-	if (_params.r_internal >= 0.f && current_a > FLT_EPSILON) {
+	if (_params.r_internal >= 0.f)
+	{
 		cell_voltage += _params.r_internal * current_a;
 
 	} else {
@@ -214,8 +261,10 @@ void Battery::estimateStateOfCharge(const float voltage_v, const float current_a
 		// assume linear relation between throttle and voltage drop
 		cell_voltage += throttle * _params.v_load_drop;
 	}
-
-	_state_of_charge_volt_based = math::interpolate(cell_voltage, _params.v_empty, _params.v_charged, 0.f, 1.f);
+	/* ASTROX BMS code, BMS 배터리 드라이버의 index를 4로 지정하였기 때문에,
+	인덱스가 4인경우에는 SOC 추정계산 코드를 넘어가도록 함. 이 외에는 정상적으로 동작.*/
+	if(_index != 4 ){
+		_state_of_charge_volt_based = math::gradual(cell_voltage, _params.v_empty, _params.v_charged, 0.f, 1.f);
 
 	// choose which quantity we're using for final reporting
 	if (_params.capacity > 0.f && _battery_initialized) {

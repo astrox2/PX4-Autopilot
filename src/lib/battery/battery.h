@@ -90,7 +90,8 @@ public:
 	void setConnected(const bool connected) { _connected = connected; }
 	void updateVoltage(const float voltage_v);
 	void updateCurrent(const float current_a);
-
+	/* ASTROX BMS code. update battery data from bridge board */
+	void updateSOC(const float soc, const float temp, const uint8_t warning, bool connected);
 	/**
 	 * Update state of charge calculations
 	 *
@@ -168,6 +169,10 @@ private:
 	float _state_of_charge_volt_based{-1.f}; // [0,1]
 	float _state_of_charge{-1.f}; // [0,1]
 	float _scale{1.f};
+
+	/*ASTROX BMS code, stable 1.13.0 버전에서는 온도 업데이트가 이 드라이버로부터 업데이트 되지 않으므로 강제로 추가.*/
+	float _temperature;
+
 	uint8_t _warning{battery_status_s::BATTERY_WARNING_NONE};
 	hrt_abstime _last_timestamp{0};
 	bool _armed{false};
