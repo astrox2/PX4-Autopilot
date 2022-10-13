@@ -65,14 +65,25 @@
 #define SMARTPORT_ID_T1            0x0400
 #define SMARTPORT_ID_T2            0x0410
 #define SMARTPORT_ID_RPM           0x0500
+
 #define SMARTPORT_ID_FUEL          0x0600
+/*Astrox BMS code, BATTERY_STATUS instance diff*/
+#define SMARTPORT_ID_FUEL_B	   0x0601
+
 #define SMARTPORT_ID_ALT           0x0100
 #define SMARTPORT_ID_VARIO         0x0110   //VSPEED
 #define SMARTPORT_ID_ACCX          0x0700
 #define SMARTPORT_ID_ACCY          0x0710
 #define SMARTPORT_ID_ACCZ          0x0720
+
 #define SMARTPORT_ID_CURR          0x0200
+/*Astrox BMS code, BATTERY_STATUS instance diff*/
+#define SMARTPORT_ID_CURR_B	   0x0201
+
 #define SMARTPORT_ID_VFAS          0x0210  //Volt per Cell
+/*Astrox BMS code, BATTERY_STATUS instance diff*/
+#define SMARTPORT_ID_VFAS_B	   0x0211  //
+
 #define SMARTPORT_ID_CELLS         0x0300
 #define SMARTPORT_ID_GPS_LON_LAT   0x0800
 #define SMARTPORT_ID_GPS_ALT       0x0820
@@ -89,12 +100,16 @@ bool sPort_init(void);
 void sPort_deinit(void);
 void sPort_update_topics(void);
 void sPort_send_data(int uart, uint16_t id, uint32_t data);
-void sPort_send_BATV(int uart);
-void sPort_send_CUR(int uart);
+
+/*Astrox BMS code. for handling multiple uORB messages */
+void sPort_send_BATV(int uart,uint8_t instance);
+void sPort_send_CUR(int uart,uint8_t instance);
+void sPort_send_FUEL(int uart,uint8_t instance);
+
+
 void sPort_send_ALT(int uart);
 void sPort_send_SPD(int uart);
 void sPort_send_VSPD(int uart, float speed);
-void sPort_send_FUEL(int uart);
 void sPort_send_GPS_LON(int uart);
 void sPort_send_GPS_LAT(int uart);
 void sPort_send_GPS_ALT(int uart);
@@ -107,4 +122,6 @@ void sPort_send_GPS_info(int uart);
 void sPort_send_NAV_STATE(int uart);
 void sPort_send_GPS_FIX(int uart);
 
+/*Astrox BMS code. chan*/
+void change_battery_instance(int instance);
 #endif /* _SPORT_TELEMETRY_H */

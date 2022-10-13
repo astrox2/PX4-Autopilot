@@ -79,9 +79,14 @@ static int frsky_task;
 typedef enum { SCANNING, SPORT, SPORT_SINGLE_WIRE, SPORT_SINGLE_WIRE_INVERT, DTYPE } frsky_state_t;
 static frsky_state_t frsky_state = SCANNING;
 
+/*Astrox BMS code, static variable for uorb(battery_status) instance.*/
+static uint8_t instance = 0;
+
 static unsigned long int sentPackets = 0;
 /* Default values for arguments */
 const char *device_name = NULL;
+
+
 
 /* functions */
 static int sPort_open_uart(const char *uart_name, struct termios *uart_config, struct termios *uart_config_original);
@@ -461,11 +466,13 @@ static int frsky_telemetry_thread_main(int argc, char *argv[])
 
 			case SMARTPORT_POLL_1:
 
-				/* report BATV at 1Hz */
-				if (now_ms - lastBATV_ms > 1000) {
+				/* report BATV at 2Hz */
+				if (now_ms - lastBATV_ms > 500) {/* Astrox BMS code. set the cycle time to double of this functions. origin value is 1000. */
 					lastBATV_ms = now_ms;
 					/* send battery voltage */
-					sPort_send_BATV(uart);
+					change_battery_instance(instance);	/* Astrox BMS code. change battery instance number. */
+					sPort_send_BATV(uart,instance);
+					instance ^= 0x01;
 					sentPackets++;
 				}
 
@@ -474,11 +481,11 @@ static int frsky_telemetry_thread_main(int argc, char *argv[])
 
 			case SMARTPORT_POLL_2:
 
-				/* report battery current at 5Hz */
-				if (now_ms - lastCUR_ms > 200) {
+				/* report battery current at 10Hz */
+				if (now_ms - lastCUR_ms > 100) {/* Astrox BMS code. set the cycle time to double of this functions. origin value is 5. */
 					lastCUR_ms = now_ms;
 					/* send battery current */
-					sPort_send_CUR(uart);
+					sPort_send_CUR(uart,instance);
 					sentPackets++;
 				}
 
@@ -513,10 +520,10 @@ static int frsky_telemetry_thread_main(int argc, char *argv[])
 			case SMARTPORT_POLL_5:
 
 				/* report fuel at 1Hz */
-				if (now_ms - lastFUEL_ms > 1000) {
+				if (now_ms - lastFUEL_ms > 500) { /* Astrox BMS code. set the cycle time to double of this functions. origin value is 5. */
 					lastFUEL_ms = now_ms;
 					/* send fuel */
-					sPort_send_FUEL(uart);
+					sPort_send_FUEL(uart,instance);
 					sentPackets++;
 				}
 

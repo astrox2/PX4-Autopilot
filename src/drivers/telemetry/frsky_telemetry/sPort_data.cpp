@@ -58,7 +58,7 @@
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_status.h>
-#include <uORB/topics/sensor_gps.h>
+#include <uORB/topics/vehicle_gps_position.h>
 
 #include <drivers/drv_hrt.h>
 
@@ -69,7 +69,7 @@ struct s_port_subscription_data_s {
 	uORB::SubscriptionData<vehicle_acceleration_s> vehicle_acceleration_sub{ORB_ID(vehicle_acceleration)};
 	uORB::SubscriptionData<vehicle_air_data_s> vehicle_air_data_sub{ORB_ID(vehicle_air_data)};
 	uORB::SubscriptionData<vehicle_global_position_s> vehicle_global_position_sub{ORB_ID(vehicle_global_position)};
-	uORB::SubscriptionData<sensor_gps_s> vehicle_gps_position_sub{ORB_ID(vehicle_gps_position)};
+	uORB::SubscriptionData<vehicle_gps_position_s> vehicle_gps_position_sub{ORB_ID(vehicle_gps_position)};
 	uORB::SubscriptionData<vehicle_local_position_s> vehicle_local_position_sub{ORB_ID(vehicle_local_position)};
 	uORB::SubscriptionData<vehicle_status_s> vehicle_status_sub{ORB_ID(vehicle_status)};
 };
@@ -176,19 +176,27 @@ void sPort_send_data(int uart, uint16_t id, uint32_t data)
 
 
 // scaling correct with OpenTX 2.1.7
-void sPort_send_BATV(int uart)
+void sPort_send_BATV(int uart,uint8_t instance)
 {
 	/* send battery voltage as VFAS */
 	uint32_t voltage = (int)(100 * s_port_subscription_data->battery_status_sub.get().voltage_v);
-	sPort_send_data(uart, SMARTPORT_ID_VFAS, voltage);
+	if(instance == 1)
+		sPort_send_data(uart, SMARTPORT_ID_VFAS_B, voltage);
+	else
+		sPort_send_data(uart, SMARTPORT_ID_VFAS, voltage);
 }
 
 // verified scaling
-void sPort_send_CUR(int uart)
+void sPort_send_CUR(int uart,uint8_t instance)
 {
 	/* send data */
 	uint32_t current = (int)(10 * s_port_subscription_data->battery_status_sub.get().current_a);
-	sPort_send_data(uart, SMARTPORT_ID_CURR, current);
+	/*Astrox BMS code, choose message id by instance*/
+	if(instance == 1)
+		sPort_send_data(uart, SMARTPORT_ID_CURR_B, current);
+	else
+		sPort_send_data(uart, SMARTPORT_ID_CURR, current);
+
 }
 
 // verified scaling for "custom" altitude option
@@ -221,11 +229,18 @@ void sPort_send_VSPD(int uart, float speed)
 }
 
 // verified scaling
-void sPort_send_FUEL(int uart)
+/*ASTROX BMS code, update fuel status by index on battery_status */
+void sPort_send_FUEL(int uart,uint8_t instance)
 {
+	uint32_t fuel = 0;
 	/* send data */
-	uint32_t fuel = (int)(100 * s_port_subscription_data->battery_status_sub.get().remaining);
-	sPort_send_data(uart, SMARTPORT_ID_FUEL, fuel);
+
+	fuel = (int)(100 * s_port_subscription_data->battery_status_sub.get().remaining);
+	/*Astrox BMS code, choose message id by instance*/
+	if(instance == 1)
+		sPort_send_data(uart, SMARTPORT_ID_FUEL_B, fuel);
+	else
+		sPort_send_data(uart, SMARTPORT_ID_FUEL, fuel);
 }
 
 void sPort_send_GPS_LON(int uart)
@@ -336,6 +351,10 @@ void sPort_send_flight_mode(int uart)
 
 void sPort_send_GPS_info(int uart)
 {
-	const sensor_gps_s &gps = s_port_subscription_data->vehicle_gps_position_sub.get();
+	const vehicle_gps_position_s &gps = s_port_subscription_data->vehicle_gps_position_sub.get();
 	sPort_send_data(uart, FRSKY_ID_TEMP2, gps.satellites_used * 10 + gps.fix_type);
+}
+/*Astrox BMS code, change battery instance when thread works.*/
+void change_battery_instance(int instance) {
+	s_port_subscription_data->battery_status_sub.ChangeInstance(instance);
 }
