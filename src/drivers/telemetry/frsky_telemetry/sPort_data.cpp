@@ -58,7 +58,7 @@
 #include <uORB/topics/vehicle_global_position.h>
 #include <uORB/topics/vehicle_local_position.h>
 #include <uORB/topics/vehicle_status.h>
-#include <uORB/topics/vehicle_gps_position.h>
+#include <uORB/topics/sensor_gps.h>
 
 #include <drivers/drv_hrt.h>
 
