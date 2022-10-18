@@ -264,7 +264,7 @@ void Battery::estimateStateOfCharge(const float voltage_v, const float current_a
 	/* ASTROX BMS code, BMS 배터리 드라이버의 index를 4로 지정하였기 때문에,
 	인덱스가 4인경우에는 SOC 추정계산 코드를 넘어가도록 함. 이 외에는 정상적으로 동작.*/
 	if(_index != 4 ){
-		_state_of_charge_volt_based = math::gradual(cell_voltage, _params.v_empty, _params.v_charged, 0.f, 1.f);
+		_state_of_charge_volt_based = math::interpolate(cell_voltage, _params.v_empty, _params.v_charged, 0.f, 1.f);
 
 	// choose which quantity we're using for final reporting
 	if (_params.capacity > 0.f && _battery_initialized) {
@@ -281,6 +281,7 @@ void Battery::estimateStateOfCharge(const float voltage_v, const float current_a
 
 	} else {
 		_state_of_charge = _state_of_charge_volt_based;
+		}
 	}
 }
 
